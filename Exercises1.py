@@ -1,5 +1,6 @@
 "Exercises 1"
 "Exercises 1"
+
 import networkx as nx
 from priorityq import PriorityQueue
 import random
@@ -75,9 +76,72 @@ def parallel_spectral(G,j):#j è il numero di jobs
             c2_ov=c2_ov.union(list[j][1])
             c3_ov=c3_ov.union(list[j][2])
             c4_ov=c4_ov.union(list[j][3])
+
     return c1_ov,c2_ov,c3_ov,c4_ov
+#K-MEANS
+def four_means(G,sample=None):
 
+    if sample is None:
+        sample = G.nodes()
 
+    #n=G.number_of_nodes()
+    n=len(sample)
+    # Choose four clusters represented by vertices that are not neighbors
+    #u = random.choice(list(G.nodes()))
+    u = random.choice(list(sample))
+    v = random.choice(list(nx.non_neighbors(nx.subgraph(G,sample), u)))
+    w=random.choice(list(nx.non_neighbors(nx.subgraph(G,sample), v)))
+    z=random.choice(list(nx.non_neighbors(nx.subgraph(G,sample), w)))
+    '''intersect_u_v=list(set(list(nx.non_neighbors(nx.subgraph(G,sample), u))) & set(list(nx.non_neighbors(nx.subgraph(G,sample), v))))
+    w= random.choice(intersect_u_v)
+    intesect_u_v_w=list(set(intersect_u_v) & set(list(nx.non_neighbors(nx.subgraph(G,sample), w))) )
+    z=random.choice(intesect_u_v_w)'''
+    #w = random.choice(list(nx.non_neighbors(nx.subgraph(G,sample), v)).append(list(nx.non_neighbors(nx.subgraph(G,sample), u))) )
+    #z = random.choice(list(nx.non_neighbors(nx.subgraph(G,sample), w)))
+    cluster0 = {u}
+    cluster1 = {v}
+    cluster2 = {w}
+    cluster3 = {z}
+    added = 4
+
+    while added < n:
+        # Choose a node that is not yet in a cluster and add it to the closest cluster
+
+        x = random.choice([el for el in sample if el not in cluster0|cluster1|cluster2|cluster3 and (len(
+            set(G.neighbors(el)).intersection(cluster0)) != 0 or len(set(G.neighbors(el)).intersection(cluster1)) != 0 or len(set(G.neighbors(el)).intersection(cluster2)) != 0 or len(set(G.neighbors(el)).intersection(cluster3)) != 0)])
+        if len(set(G.neighbors(x)).intersection(cluster0)) != 0:
+            cluster0.add(x)
+            added+=1
+        elif len(set(G.neighbors(x)).intersection(cluster1)) != 0:
+            cluster1.add(x)
+            added+=1
+        elif len(set(G.neighbors(x)).intersection(cluster2)) != 0:
+            cluster2.add(x)
+            added+=1
+        elif len(set(G.neighbors(x)).intersection(cluster3)) != 0:
+            cluster3.add(x)
+            added+=1
+            #print(cluster0, cluster1,cluster2,cluster3)
+    return cluster0, cluster1,cluster2,cluster3
+
+def parallel_4means(G,j):#j è il numero di jobs
+
+    c1_ov=set()
+    c2_ov=set()
+    c3_ov=set()
+    c4_ov=set()
+    #Initialize the class Parallel with the number of available process
+    with Parallel(n_jobs=j) as parallel:
+        #Run in parallel diameter function on each processor by passing to each processor only the subset of nodes on which it works
+        list=parallel(delayed(four_means)(G,X) for X in chunks(G.nodes(), math.ceil(len(G.nodes())/j)))
+        #Aggregates the results
+        for j in range(len(list)):
+            c1_ov=c1_ov.union(list[j][0])
+            c2_ov=c2_ov.union(list[j][1])
+            c3_ov=c3_ov.union(list[j][2])
+            c4_ov=c4_ov.union(list[j][3])
+
+    print(c1_ov,c2_ov,c3_ov,c4_ov)
 
 
 G=load_graph()
@@ -92,10 +156,20 @@ G.add_edge('D', 'F')
 G.add_edge('D', 'G')
 G.add_edge('E', 'F')
 G.add_edge('F', 'G')
-G.add_edge('F', 'fox')'''
-
-c1,c2,c3,c4=parallel_spectral(G,60)
+G.add_edge('F', 'fox')
+G.add_edge('F', 'fix')
+G.add_edge('F', 'fux')
+G.add_edge('fux', 'fox')'''
+'''import matplotlib.pyplot as plt
+nx.draw(G)
+plt.show()'''
+parallel_4means(G,40)
+'''c1,c2,c3,c4=parallel_spectral(G,60)
+print("Metodo Spectral\n")
 print("cluster 1:"+str(c1))
 print("cluster 2:"+str(c2))
 print("cluster 3:"+str(c3))
-print("cluster 4:"+str(c4))
+print("cluster 4:"+str(c4))'''
+
+
+
