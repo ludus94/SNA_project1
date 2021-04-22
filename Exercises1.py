@@ -75,7 +75,6 @@ def parallel_spectral(G,j):#j è il numero di jobs
             c2_ov=c2_ov.union(list[j][1])
             c3_ov=c3_ov.union(list[j][2])
             c4_ov=c4_ov.union(list[j][3])
-    print(list)
     return c1_ov,c2_ov,c3_ov,c4_ov
 
 
@@ -95,7 +94,8 @@ G.add_edge('E', 'F')
 G.add_edge('F', 'G')
 G.add_edge('F', 'fox')'''
 
-c1,c2,c3,c4=parallel_spectral(G,6)
-print(c1,c2,c3,c4)
-
-
+c1,c2,c3,c4=parallel_spectral(G,60)
+print("cluster 1:"+str(c1))
+print("cluster 2:"+str(c2))
+print("cluster 3:"+str(c3))
+print("cluster 4:"+str(c4))
