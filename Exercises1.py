@@ -79,50 +79,6 @@ def parallel_spectral(G,j):#j è il numero di jobs
 
     return c1_ov,c2_ov,c3_ov,c4_ov
 #K-MEANS
-def four_means(G,sample=None):
-
-    if sample is None:
-        sample = G.nodes()
-
-    #n=G.number_of_nodes()
-    n=len(sample)
-    # Choose four clusters represented by vertices that are not neighbors
-    #u = random.choice(list(G.nodes()))
-    u = random.choice(list(sample))
-    v = random.choice(list(nx.non_neighbors(nx.subgraph(G,sample), u)))
-    w=random.choice(list(nx.non_neighbors(nx.subgraph(G,sample), v)))
-    z=random.choice(list(nx.non_neighbors(nx.subgraph(G,sample), w)))
-    '''intersect_u_v=list(set(list(nx.non_neighbors(nx.subgraph(G,sample), u))) & set(list(nx.non_neighbors(nx.subgraph(G,sample), v))))
-    w= random.choice(intersect_u_v)
-    intesect_u_v_w=list(set(intersect_u_v) & set(list(nx.non_neighbors(nx.subgraph(G,sample), w))) )
-    z=random.choice(intesect_u_v_w)'''
-    #w = random.choice(list(nx.non_neighbors(nx.subgraph(G,sample), v)).append(list(nx.non_neighbors(nx.subgraph(G,sample), u))) )
-    #z = random.choice(list(nx.non_neighbors(nx.subgraph(G,sample), w)))
-    cluster0 = {u}
-    cluster1 = {v}
-    cluster2 = {w}
-    cluster3 = {z}
-    added = 4
-
-    while added < n:
-        # Choose a node that is not yet in a cluster and add it to the closest cluster
-
-        x = random.choice([el for el in sample if el not in cluster0|cluster1|cluster2|cluster3 and (len(
-            set(G.neighbors(el)).intersection(cluster0)) != 0 or len(set(G.neighbors(el)).intersection(cluster1)) != 0 or len(set(G.neighbors(el)).intersection(cluster2)) != 0 or len(set(G.neighbors(el)).intersection(cluster3)) != 0)])
-        if len(set(G.neighbors(x)).intersection(cluster0)) != 0:
-            cluster0.add(x)
-            added+=1
-        elif len(set(G.neighbors(x)).intersection(cluster1)) != 0:
-            cluster1.add(x)
-            added+=1
-        elif len(set(G.neighbors(x)).intersection(cluster2)) != 0:
-            cluster2.add(x)
-            added+=1
-        elif len(set(G.neighbors(x)).intersection(cluster3)) != 0:
-            cluster3.add(x)
-            added+=1
-            #print(cluster0, cluster1,cluster2,cluster3)
-    return cluster0, cluster1,cluster2,cluster3
 
 def parallel_4means(G,j):#j è il numero di jobs
 
@@ -140,11 +96,75 @@ def parallel_4means(G,j):#j è il numero di jobs
             c2_ov=c2_ov.union(list[j][1])
             c3_ov=c3_ov.union(list[j][2])
             c4_ov=c4_ov.union(list[j][3])
+    #print(list)
+    print("cluster1:",c1_ov,"\n")
+    print("cluster2:",c2_ov,"\n")
+    print("cluster3:",c3_ov,"\n")
+    print("cluster4:",c4_ov,"\n")
 
-    print(c1_ov,c2_ov,c3_ov,c4_ov)
+def four_means(G,sample=None):
+
+    if sample is None:
+        sample = G.nodes()
+
+    n=len(sample)
+    # Choose four clusters represented by vertices that are not neighbors
+    u = random.choice(list(nx.subgraph(G,sample)))
+    v = random.choice(list(nx.non_neighbors(nx.subgraph(G,sample), u)))
+    #intersect_u_v=list(set(list(nx.non_neighbors(nx.subgraph(G,sample), u))) & set(list(nx.non_neighbors(nx.subgraph(G,sample), v))))
+    w= random.choice(list(nx.non_neighbors(nx.subgraph(G,sample), v)))
+    #intesect_u_v_w=list(set(intersect_u_v) & set(list(nx.non_neighbors(nx.subgraph(G,sample), w))) )
+    z=random.choice(list(nx.non_neighbors(nx.subgraph(G,sample), w)))
+
+    cluster0=set()
+    cluster1=set()
+    cluster2=set()
+    cluster3=set()
+    cluster4=set()
+    cluster0.add(u)
+    cluster1.add(v)
+    cluster2.add(w)
+    cluster3.add(z)
+    added = 4
+    while added < n:
+        #print(added)
+        lista=[]
+        for el in sample:
+            if el not in cluster0|cluster1|cluster2|cluster3 and (len(set(G.neighbors(el)).intersection(cluster0)) != 0 or len(set(G.neighbors(el)).intersection(cluster1)) != 0 or len(set(G.neighbors(el)).intersection(cluster2)) != 0 or len(set(G.neighbors(el)).intersection(cluster3)) != 0 ):
+                lista.append(el)
+            else:
+                if el not in cluster0|cluster1|cluster2|cluster3:
+                    cluster4.add(el)
+                    added+=1
+
+            if len(lista)!=0:
+                x = random.choice(lista)
+                if len(set(G.neighbors(x)).intersection(cluster0)) != 0:
+                    cluster0.add(x)
+                    added+=1
+                    lista.remove(x)
+                elif len(set(G.neighbors(x)).intersection(cluster1)) != 0:
+                    cluster1.add(x)
+                    added+=1
+                    lista.remove(x)
+                elif len(set(G.neighbors(x)).intersection(cluster2)) != 0:
+                    cluster2.add(x)
+                    added+=1
+                    lista.remove(x)
+                elif len(set(G.neighbors(x)).intersection(cluster3)) != 0:
+                    cluster3.add(x)
+                    added+=1
+                    lista.remove(x)
+
+        cluster1=cluster1.union(cluster4)
+
+    return cluster0, cluster1,cluster2,cluster3
+
+
 
 
 G=load_graph()
+
 #hierarchical(G)
 '''G = nx.Graph()
 G.add_edge('A', 'B')
@@ -159,10 +179,11 @@ G.add_edge('F', 'G')
 G.add_edge('F', 'fox')
 G.add_edge('F', 'fix')
 G.add_edge('F', 'fux')
-G.add_edge('fux', 'fox')'''
-'''import matplotlib.pyplot as plt
-nx.draw(G)
-plt.show()'''
+G.add_edge('fux', 'fox')
+G.add_edge('fux', 'fex')
+G.add_edge('fex', 'GRANMAESTRO')
+G.add_edge('GRANMAESTRO', 'masto_Del_fox')'''
+
 parallel_4means(G,40)
 '''c1,c2,c3,c4=parallel_spectral(G,60)
 print("Metodo Spectral\n")
