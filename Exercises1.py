@@ -162,7 +162,6 @@ def four_means(G,sample=None):
 
 
 
-
 G=load_graph()
 
 #hierarchical(G)
