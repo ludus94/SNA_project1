@@ -179,8 +179,10 @@ def top_rank(k,rank):
     for i in range(k):
         out.append(pq.pop())
     return out
-#VERSIONE PARALLELIZZATA
-def rank_parallel(graph,d=0.85,n_iterations=50):
+#----------------VERSIONE PARALLELIZZATA DI PAGE RANK----------
+def rank_parallel(graph,sample=None,d=0.85,n_iterations=50):
+    if sample is None:
+        sample=graph
 
     V = graph.number_of_nodes()  #is the number of nodes of the graph
     ranks = dict()#dict of ranks
@@ -188,7 +190,7 @@ def rank_parallel(graph,d=0.85,n_iterations=50):
         ranks[node] = 1/V
 
     for _ in range(n_iterations):
-        for el in graph.nodes():
+        for el in sample:
             rank_sum = 0
             curr_rank = ranks[el]
 
@@ -202,6 +204,23 @@ def rank_parallel(graph,d=0.85,n_iterations=50):
 
     return ranks
 
+def chunks(data,size):
+    idata=iter(data)
+    for i in range(0, len(data), size):
+        yield {k:data[k] for k in it.islice(idata, size)}
+
+def parallel_rank(G,s,number_of_iteration,j):#j è il numero di jobs, s è il parametro della page-ranking, number_of_iteration è il numero di iterazioni del page-ranking
+
+    total_rank=dict()
+    #Initialize the class Parallel with the number of available process
+    with Parallel(n_jobs=j) as parallel:
+        #Run in parallel diameter function on each processor by passing to each processor only the subset of nodes on which it works
+        list=parallel(delayed(rank_parallel)(G,X,s,number_of_iteration) for X in chunks(G.nodes(), math.ceil(len(G.nodes())/j)))
+        #Aggregates the results
+        for j in list:
+            for el in j.keys():
+                total_rank[el]=j[el]
+    return total_rank
 
 
 
@@ -229,9 +248,9 @@ print(top_parallel(G,500,33))
 print("betweenness")
 print(top(G,btw,500))
 '''
-print("Page ranking")
+print("Page ranking Naive")
 rank=rank(G,0.85,50)
-
 print(top_rank(500,rank))
-'''top=top_rank(rank,3)
-print(top)'''
+print("\n Page ranking Parallelo")
+res=parallel_rank(G,0.85,50,10)#G,s,number_of_iteration,j
+print(top_rank(500,res))
