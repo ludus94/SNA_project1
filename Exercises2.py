@@ -5,6 +5,8 @@ import itertools as it
 from joblib import Parallel, delayed
 import math
 from priorityq import PriorityQueue
+import operator
+
 
 def load_graph():
     Data = open('musae_facebook_edges.csv', "r")
@@ -146,15 +148,90 @@ def closeness_par(G,sample=None):
 #The measure associated to each node is its betweenness value
 def btw(G):
     return betweenness(G)[1]
+#-------------------------------------------------PAGE RANKING OF UNDIRECTED GRAPHS
+def rank(graph,d=0.85,n_iterations=50):
+
+    V = graph.number_of_nodes()  #is the number of nodes of the graph
+    ranks = dict()#dict of ranks
+    for node in graph.nodes():
+        ranks[node] = 1/V
+
+    for _ in range(n_iterations):
+        for el in graph.nodes():
+            rank_sum = 0
+            curr_rank = ranks[el]
+
+            for n in graph.neighbors(el):
+                if ranks[n] is not None:
+                    outlinks = len(list(graph.neighbors(n)))
+                    rank_sum += (1 / float(outlinks)) * ranks[n]#contributo al rank del nodo "el" da parte dei nodi adiacenti
+
+            # computazione del rank di el
+            ranks[el] = ((1 - float(d)) * (1/float(V))) + d*rank_sum
+
+    return ranks
+
+def top_rank(k,rank):
+    pq = PriorityQueue()
+    for u in rank.keys():
+        pq.add(u, -rank[u])  # We use negative value because PriorityQueue returns first values whose priority value is lower
+    out=[]
+    for i in range(k):
+        out.append(pq.pop())
+    return out
+#VERSIONE PARALLELIZZATA
+def rank_parallel(graph,d=0.85,n_iterations=50):
+
+    V = graph.number_of_nodes()  #is the number of nodes of the graph
+    ranks = dict()#dict of ranks
+    for node in graph.nodes():
+        ranks[node] = 1/V
+
+    for _ in range(n_iterations):
+        for el in graph.nodes():
+            rank_sum = 0
+            curr_rank = ranks[el]
+
+            for n in graph.neighbors(el):
+                if ranks[n] is not None:
+                    outlinks = len(list(graph.neighbors(n)))
+                    rank_sum += (1 / float(outlinks)) * ranks[n]#contributo al rank del nodo "el" da parte dei nodi adiacenti
+
+            # computazione del rank di el
+            ranks[el] = ((1 - float(d)) * (1/float(V))) + d*rank_sum
+
+    return ranks
+
+
+
+
 G=load_graph()
+
 '''
+G = nx.Graph()
+G.add_edge('1', '2')
+G.add_edge('1', '3')
+G.add_edge('2', '3')
+G.add_edge('2', '4')
+G.add_edge('4', '5')
+G.add_edge('4', '6')
+G.add_edge('4', '7')
+G.add_edge('5', '6')
+G.add_edge('6', '7')
+
 print("Centrality measures:")
 print("degree")
 print(top(G,degree,500))
-'''
+
 print("closeness")
 print(top_parallel(G,500,33))
-'''
+
 print("betweenness")
 print(top(G,btw,500))
 '''
+print("Page ranking")
+rank=rank(G,0.85,50)
+
+print(top_rank(500,rank))
+'''top=top_rank(rank,3)
+print(top)'''
