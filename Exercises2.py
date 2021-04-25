@@ -222,7 +222,7 @@ def parallel_rank(G,s,number_of_iteration,j):#j è il numero di jobs, s è il pa
                 total_rank[el]=j[el]
     return total_rank
 
-#HITS ITERATION
+#---------------------HITS NAIVE ITERATION--------------------------------
 def hits(graph,k):
 
     auth = dict()
@@ -250,17 +250,81 @@ def normalize(G,auth,hubs):
     return auth,hubs
 
 
-
-def top_f(G,k):
+def top_hits(G,k,num_node):
     pq = PriorityQueue()
+    pq2=PriorityQueue()
     auth_n,hubs_n=hits(G,k)
     for u in G.nodes():
         pq.add(u, -auth_n[u])  # We use negative value because PriorityQueue returns first values whose priority value is lower
+    for u in G.nodes():
+        pq2.add(u, -hubs_n[u])  # We use negative value because PriorityQueue returns first values whose priority value is lower
     out=[]
-    for i in range(k):
+    out2=[]
+    for i in range(num_node):
         out.append(pq.pop())
-    return out
+        out2.append(pq2.pop())
+    return out,out2
 
+#---------------------HITS Pararell ITERATION--------------------------------
+def parallel_hits(G,k,j):#j è il numero di jobs
+    auth_total=dict()
+    hubs_total=dict()
+    #Initialize the class Parallel with the number of available process
+    with Parallel(n_jobs=j) as parallel:
+        #Run in parallel diameter function on each processor by passing to each processor only the subset of nodes on which it works
+        list=parallel(delayed(hits_sample)(G,X,k) for X in chunks(G.nodes(), math.ceil(len(G.nodes())/j)))
+        #Aggregates the results
+        for i in list:
+            for el in i[0].keys():
+                auth_total[el]=i[0][el]
+            for el in i[1].keys():
+                hubs_total[el]=i[1][el]
+    return auth_total,hubs_total
+
+def hits_sample(graph,sample,k):
+    if sample is None:
+        sample=graph
+    auth = dict()
+    hubs= dict()
+    subgraph=nx.subgraph(G,sample)
+    for node in sample:
+        auth[node] = 1
+        hubs[node] = 1
+    for i in range(k):#We perform a sequence of k hub-authority updates
+        for node in sample:
+            auth[node] =sum(hubs[el] for el in subgraph[node] )#First apply the Authority Update Rule to the current set of scores.
+        for node in sample:
+            hubs[node] =sum(auth[el] for el in subgraph[node])#Then apply the Hub Update Rule to the resulting set of scores.
+
+    auth_n,hubs_n=normalize(subgraph,sample,auth,hubs)
+    return auth_n,hubs_n
+
+
+def normalize(G,sample,auth,hubs):
+    auth_sum = sum(auth[node] for node in G.nodes())
+    hub_sum = sum(hubs[node] for node in G.nodes())
+
+    for node in G.nodes():
+        auth[node] =auth[node]/auth_sum
+        hubs[node] =hubs[node]/hub_sum
+    return auth,hubs
+
+
+
+def top_hits_parall(G,k,num_node,j):
+    pq = PriorityQueue()
+    pq2=PriorityQueue()
+    auth_n,hubs_n=parallel_hits(G,k,j)
+    for u in G.nodes():
+        pq.add(u, -auth_n[u])  # We use negative value because PriorityQueue returns first values whose priority value is lower
+    for u in G.nodes():
+        pq2.add(u, -hubs_n[u])  # We use negative value because PriorityQueue returns first values whose priority value is lower
+    out=[]
+    out2=[]
+    for i in range(num_node):
+        out.append(pq.pop())
+        out2.append(pq2.pop())
+    return out,out2
 
 G=load_graph()
 '''
@@ -292,6 +356,9 @@ print("\n Page ranking Parallelo")
 res=parallel_rank(G,0.85,50,10)#G,s,number_of_iteration,j
 print(top_rank(500,res))
 '''
-print("Hits Naive")
-a=top_f(G,30)
+"""print("Hits Naive")
+a,h=top_f(G,30,500)
+print(a)"""
+print("Parallel Hits")
+a,h=top_hits_parall(G,30,500,20)
 print(a)
