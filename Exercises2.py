@@ -222,10 +222,47 @@ def parallel_rank(G,s,number_of_iteration,j):#j è il numero di jobs, s è il pa
                 total_rank[el]=j[el]
     return total_rank
 
+#HITS ITERATION
+def hits(graph,k):
+
+    auth = dict()
+    hubs= dict()
+    for node in graph.nodes():
+        auth[node] = 1
+        hubs[node] = 1
+    for i in range(k):#We perform a sequence of k hub-authority updates
+        for node in graph.nodes():
+            auth[node] =sum(hubs[el] for el in graph[node])#First apply the Authority Update Rule to the current set of scores.
+        for node in graph.nodes():
+            hubs[node] =sum(auth[el] for el in graph[node])#Then apply the Hub Update Rule to the resulting set of scores.
+
+    auth_n,hubs_n=normalize(G,auth,hubs)
+    return auth_n,hubs_n
+
+
+def normalize(G,auth,hubs):
+    auth_sum = sum(auth[node] for node in G.nodes())
+    hub_sum = sum(hubs[node] for node in G.nodes())
+
+    for node in G.nodes():
+        auth[node] =auth[node]/auth_sum
+        hubs[node] =hubs[node]/hub_sum
+    return auth,hubs
+
+
+
+def top_f(G,k):
+    pq = PriorityQueue()
+    auth_n,hubs_n=hits(G,k)
+    for u in G.nodes():
+        pq.add(u, -auth_n[u])  # We use negative value because PriorityQueue returns first values whose priority value is lower
+    out=[]
+    for i in range(k):
+        out.append(pq.pop())
+    return out
 
 
 G=load_graph()
-
 '''
 G = nx.Graph()
 G.add_edge('1', '2')
@@ -247,10 +284,14 @@ print(top_parallel(G,500,33))
 
 print("betweenness")
 print(top(G,btw,500))
-'''
+
 print("Page ranking Naive")
 rank=rank(G,0.85,50)
 print(top_rank(500,rank))
 print("\n Page ranking Parallelo")
 res=parallel_rank(G,0.85,50,10)#G,s,number_of_iteration,j
 print(top_rank(500,res))
+'''
+print("Hits Naive")
+a=top_f(G,30)
+print(a)
