@@ -12,14 +12,16 @@ def load_graph():
                       nodetype=str)
     return G
 
+
+
 def hierarchical(G):
     # Create a priority queue with each pair of nodes indexed by distance
     pq = PriorityQueue()
     for u in G.nodes():
         for v in G.nodes():
-            if u != v:#se sono 2 nodi distinti
+            if u != v:
                 if (u, v) in G.edges() or (v, u) in G.edges():
-                    pq.add(frozenset([frozenset(u), frozenset(v)]), 0)#intendo come nodi vicini quelli che hanno un arco tra loro
+                    pq.add(frozenset([frozenset(u), frozenset(v)]), 0)
                 else:
                     pq.add(frozenset([frozenset(u), frozenset(v)]), 1)
 
@@ -29,18 +31,18 @@ def hierarchical(G):
     done = False
     while not done:
         # Merge closest clusters
-        s = list(pq.pop())#prelevo prima quelli a priorità più alta
+        s = list(pq.pop())
         clusters.remove(s[0])
-        clusters.remove(s[1])#ipotizziamo sia un nuovo cluster
+        clusters.remove(s[1])
 
         # Update the distance of other clusters from the merged cluster
         for w in clusters:
             e1 = pq.remove(frozenset([s[0], w]))
             e2 = pq.remove(frozenset([s[1], w]))
             if e1 == 0 or e2 == 0:
-                pq.add(frozenset([s[0] | s[1], w]), 0)#or bit a bit. è come se inserissi un unico nodo che rappresenta un cluster
+                pq.add(frozenset([s[0] | s[1], w]), 0)
             else:
-                pq.add(frozenset([s[0] | s[1], w]), 1)#w sono gli altri cluster di cui rappresento la distanza
+                pq.add(frozenset([s[0] | s[1], w]), 1)
 
         clusters.add(s[0] | s[1])
 
@@ -65,7 +67,6 @@ def load_label():
                 label[row['id']]=row['page_type']
         except csv.Error as e:
             sys.exit('file {}, line {}: {}'.format(filename, reader.line_num, e))
-    print(label)
     return label
 
 
@@ -91,7 +92,8 @@ def count_occ_labels(cl1):
 
 
 load_label()
-#G=load_graph()
+G=load_graph()
+"""G=nx.Graph()
 G = nx.Graph()
 G.add_edge('A', 'B')
 G.add_edge('A', 'C')
@@ -106,8 +108,19 @@ G.add_edge('F', 'fox')
 G.add_edge('F', 'fix')
 G.add_edge('F', 'fux')
 G.add_edge('fux', 'fox')
+G = nx.Graph()
+G.add_edge('1', '2')
+G.add_edge('1', '3')
+G.add_edge('2', '3')
+G.add_edge('2', '4')
+G.add_edge('4', '5')
+G.add_edge('4', '6')
+G.add_edge('4', '7')
+G.add_edge('5', '6')
+G.add_edge('6', '7')"""
 clusters=hierarchical(G)
-cl1=clusters[0]
+
+"""cl1=clusters[0]
 cl2=clusters[1]
 cl3=clusters[2]
 cl4=clusters[3]
@@ -131,3 +144,4 @@ print("Cluster4:\n tvshow: "+str(count1)+
    " company: "+ str(count2)+
    " politician:"+str(count3)+
     " government:"+str(count4)+"\n")
+    """

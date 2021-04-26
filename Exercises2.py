@@ -100,6 +100,7 @@ def betweenness(G):
                 node_btw[c]+=vflow[c] #betweenness of a vertex is the sum over all s of the number of shortest paths from s to other nodes using that vertex
 
     return edge_btw,node_btw
+
 #PARALLEL IMPLEMENTATION
 def chunks(data,size):
     idata=iter(data)
@@ -125,6 +126,7 @@ def closeness_par(G,sample=None):
     cen=dict()
     if sample is None:
         sample = G.nodes()
+    subgraph=nx.subgraph(G,sample)
     for u in sample:
         visited=set()
         visited.add(u)
@@ -134,15 +136,13 @@ def closeness_par(G,sample=None):
 
         while len(queue) > 0:
             v = queue.pop(0)
-            for w in G[v]:
+            for w in subgraph[v]:
                 if w not in visited:
                     visited.add(w)
                     queue.append(w)
                     dist[w] = dist[v]+1#contiene per ogni nodo la lunghezza del path minimo da esso alla radice
 
         cen[u]=sum(dist.values())
-
-    return cen
 
 
 #The measure associated to each node is its betweenness value
