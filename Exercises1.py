@@ -262,50 +262,208 @@ def four_means(G,sample=None):
                     added+=1
                     lista.remove(x)
 
-        cluster1=cluster1.union(cluster4)
+        lista_cl4 = list(cluster4)
+        cl_len = len(lista_cl4)
+        it=int(math.ceil(cl_len/4))
+        for el in range(cl_len):
+            if(el >=0 and el < it):
+                item=lista_cl4[el]
+                cluster0.add(item)
+            elif (el >= it and el < 2*it):
+                item = lista_cl4[el]
+                cluster1.add(item)
+            elif (el >= 2*it and el < 3*it):
+                item = lista_cl4[el]
+                cluster2.add(item)
+            elif (el >= 3*it and el < 4*it):
+                item = lista_cl4[el]
+                cluster3.add(item)
+
 
     return cluster0, cluster1,cluster2,cluster3
 
-"""
-G = nx.Graph()
-G.add_edge('1', '2')
-G.add_edge('1', '3')
-G.add_edge('2', '3')
-G.add_edge('2', '4')
-G.add_edge('4', '5')
-G.add_edge('4', '6')
-G.add_edge('4', '7')
-G.add_edge('5', '6')
-G.add_edge('6', '7')
-"""
+def betweenness_par(G,sample=None):
+
+    if sample is None:
+        sample=G.nodes()
+    subgraph=nx.subgraph(G,sample)
+    edge_btw={frozenset(e):0 for e in subgraph.edges()}
+    node_btw={i:0 for i in subgraph.nodes()}
+
+    for s in subgraph.nodes():
+        # Compute the number of shortest paths from s to every other node
+        tree = []  # it lists the nodes in the order in which they are visited
+        spnum = {i: 0 for i in subgraph.nodes()}  # it saves the number of shortest paths from s to i
+        parents = {i: [] for i in subgraph.nodes()}  # it saves the parents of i in each of the shortest paths from s to i
+        distance = {i: -1 for i in subgraph.nodes()}  # the number of shortest paths starting from s that use the edge e
+        eflow = {frozenset(e): 0 for e in subgraph.edges()}  # the number of shortest paths starting from s that use the edge e
+        vflow = {i: 1 for i in subgraph.nodes()} #the number of shortest paths starting from s that use the vertex i. It is initialized to 1 because the shortest path from s to i is assumed to uses that vertex once.
+
+        #BFS
+        queue=[s]
+        spnum[s]=1
+        distance[s]=0
+        while queue != []:
+            c=queue.pop(0)
+            tree.append(c)
+            for i in subgraph[c]:
+                if distance[i] == -1: #if vertex i has not been visited
+                    queue.append(i)
+                    distance[i]=distance[c]+1
+                if distance[i] == distance[c]+1: #if we have just found another shortest path from s to i
+                    spnum[i]+=spnum[c]
+                    parents[i].append(c)
+
+        # BOTTOM-UP PHASE
+        while tree != []:
+            c=tree.pop()
+            for i in parents[c]:
+                eflow[frozenset({c,i})]+=vflow[c] * (spnum[i]/spnum[c]) #the number of shortest paths using vertex c is split among the edges towards its parents proportionally to the number of shortest paths that the parents contributes
+                vflow[i]+=eflow[frozenset({c,i})] #each shortest path that use an edge (i,c) where i is closest to s than c must use also vertex i
+                edge_btw[frozenset({c,i})]+=eflow[frozenset({c,i})] #betweenness of an edge is the sum over all s of the number of shortest paths from s to other nodes using that edge
+            if c != s:
+                node_btw[c]+=vflow[c] #betweenness of a vertex is the sum over all s of the number of shortest paths from s to other nodes using that vertex
+
+    return edge_btw,node_btw
+def bwt_cluster_parallel(G,j):
+    #PARALLELIZZAZIONE
+    pq=PriorityQueue()
+    with Parallel(n_jobs=j) as parallel:
+        #Run in parallel diameter function on each processor by passing to each processor only the subset of nodes on which it works
+        lista=parallel(delayed(betweenness_par)(G,X) for X in chunks(G.nodes(), math.ceil(len(G.nodes())/j)))
+        #Aggregates the results
+
+    for j in lista:
+        for i in j[0].keys():
+            pq.add(i,-j[0][i])#Fase di assemblaggio
+
+    graph=G.copy()
+    done=False
+    old_list=list()
+    while not done:
+
+        edge=tuple(sorted(pq.pop()))
+        graph.remove_edges_from([edge])
+
+        list_connected_comp=list(nx.connected_components(graph))
+        if len(list(nx.connected_components(graph))) == 4:
+             done = True
+    return list_connected_comp
+
+
+def betweenness(G):
+    edge_btw = {frozenset(e): 0 for e in G.edges()}
+    node_btw = {i: 0 for i in G.nodes()}
+
+    for s in G.nodes():
+        # Compute the number of shortest paths from s to every other node
+        tree = []  # it lists the nodes in the order in which they are visited
+        spnum = {i: 0 for i in G.nodes()}  # it saves the number of shortest paths from s to i
+        parents = {i: [] for i in G.nodes()}  # it saves the parents of i in each of the shortest paths from s to i
+        distance = {i: -1 for i in G.nodes()}  # the number of shortest paths starting from s that use the edge e
+        eflow = {frozenset(e): 0 for e in G.edges()}  # the number of shortest paths starting from s that use the edge e
+        vflow = {i: 1 for i in
+                 G.nodes()}  # the number of shortest paths starting from s that use the vertex i. It is initialized to 1 because the shortest path from s to i is assumed to uses that vertex once.
+
+        # BFS
+        queue = [s]
+        spnum[s] = 1
+        distance[s] = 0
+        while queue != []:
+            c = queue.pop(0)
+            tree.append(c)
+            for i in G[c]:
+                if distance[i] == -1:  # if vertex i has not been visited
+                    queue.append(i)
+                    distance[i] = distance[c] + 1
+                if distance[i] == distance[c] + 1:  # if we have just found another shortest path from s to i
+                    spnum[i] += spnum[c]
+                    parents[i].append(c)
+
+        # BOTTOM-UP PHASE
+        while tree != []:
+            c = tree.pop()
+            for i in parents[c]:
+                eflow[frozenset({c, i})] += vflow[c] * (spnum[i] / spnum[
+                    c])  # the number of shortest paths using vertex c is split among the edges towards its parents proportionally to the number of shortest paths that the parents contributes
+                vflow[i] += eflow[frozenset({c,
+                                             i})]  # each shortest path that use an edge (i,c) where i is closest to s than c must use also vertex i
+                edge_btw[frozenset({c, i})] += eflow[frozenset({c,
+                                                                i})]  # betweenness of an edge is the sum over all s of the number of shortest paths from s to other nodes using that edge
+            if c != s:
+                node_btw[c] += vflow[
+                    c]  # betweenness of a vertex is the sum over all s of the number of shortest paths from s to other nodes using that vertex
+
+    return edge_btw, node_btw
+
+
+def bwt_cluster_naive(G):
+    eb, nb = betweenness(G)
+    pq = PriorityQueue()
+    for i in eb.keys():
+        pq.add(i, -eb[i])
+    graph = G.copy()
+
+    done = False
+    while not done:
+        edge = tuple(sorted(pq.pop()))
+        graph.remove_edges_from([edge])
+        list_connected_comp = list(nx.connected_components(graph))
+        if len(list(nx.connected_components(graph))) == 4:
+            done = True
+
+    return list_connected_comp
 
 G=load_graph()
 
-c1,c2,c3,c4=parallel_hier(G,40)
-'''print("Metodo hierarchical parallel\n")
-print("cluster 1:"+str(c1)+"\n")
-print("cluster 2:"+str(c2)+"\n")
-print("cluster 3:"+str(c3)+"\n")
-print("cluster 4:"+str(c4)+"\n")'''
+inp=0
+while(inp!=int(5)):
+    print("Insert 1=parallel_hier 2=parallel_4means 3=parallel_spectral 4=Girvan Newman 5=exit:")
+    inp=int(input())
+    if(inp==1):
+        c1,c2,c3,c4=parallel_hier(G,40)
+        print("Metodo hierarchical parallel\n")
+        print("Grandezza del cluster 1: "+str(len(c1))+"\n")
+        print("Grandezza del cluster 2: "+str(len(c2))+"\n")
+        print("Grandezza del cluster 3: "+str(len(c3))+"\n")
+        print("Grandezza del cluster 4: "+str(len(c4))+"\n")
+        print("cluster 1:"+str(c1)+"\n")
+        print("cluster 2:"+str(c2)+"\n")
+        print("cluster 3:"+str(c3)+"\n")
+        print("cluster 4:"+str(c4)+"\n")
+    elif(inp==2):
+        c1,c2,c3,c4=parallel_4means(G,40)
+        print("Metodo K-means\n")
+        print("Grandezza del cluster 1: "+str(len(c1))+"\n")
+        print("Grandezza del cluster 2: "+str(len(c2))+"\n")
+        print("Grandezza del cluster 3: "+str(len(c3))+"\n")
+        print("Grandezza del cluster 4: "+str(len(c4))+"\n")
+        print("cluster 1:"+str(c1))
+        print("cluster 2:"+str(c2))
+        print("cluster 3:"+str(c3))
+        print("cluster 4:"+str(c4))
+    elif(inp==3):
+        c1,c2,c3,c4=parallel_spectral(G,40)
+        print("Metodo Spectral\n")
+        print("Grandezza del cluster 1: "+str(len(c1))+"\n")
+        print("Grandezza del cluster 2: "+str(len(c2))+"\n")
+        print("Grandezza del cluster 3: "+str(len(c3))+"\n")
+        print("Grandezza del cluster 4: "+str(len(c4))+"\n")
+        print("cluster 1:"+str(c1))
+        print("cluster 2:"+str(c2))
+        print("cluster 3:"+str(c3))
+        print("cluster 4:"+str(c4))
+    elif(inp==4):
+        list=bwt_cluster_parallel(G,50)
+        print(len(list))
+        print("Metodo Betweenness Parallel")
+        print("cluster 1:"+str(list[0]))
+        print("cluster 2:"+str(list[1]))
+        print("cluster 3:"+str(list[2]))
+        print("cluster 4:"+str(list[3]))
 
 
-'''c1,c2,c3,c4=parallel_4means(G,40)
-print("Metodo K-means\n")
-print("cluster 1:"+str(c1))
-print("cluster 2:"+str(c2))
-print("cluster 3:"+str(c3))
-print("cluster 4:"+str(c4))
-
-
-c1,c2,c3,c4=parallel_spectral(G,40)
-print("Metodo Spectral\n")
-print("cluster 1:"+str(c1))
-print("cluster 2:"+str(c2))
-print("cluster 3:"+str(c3))
-print("cluster 4:"+str(c4))'''
-
-
-company,government,politician,tvshow=load_real_clusters()
+'''company,government,politician,tvshow=load_real_clusters()
 p1=compute_cluster_accuracy(company,c1)
 p2=compute_cluster_accuracy(government,c1)
 p3=compute_cluster_accuracy(politician,c1)
@@ -313,4 +471,4 @@ p4=compute_cluster_accuracy(tvshow,c1)
 print("Company:",p1,"\n")
 print("Government:",p2,"\n")
 print("Politician:",p3,"\n")
-print("Tv-Show:",p4,"\n")
+print("Tv-Show:",p4,"\n")'''

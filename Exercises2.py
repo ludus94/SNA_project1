@@ -28,7 +28,6 @@ def top(G,measure,k):
         out.append(pq.pop())
     return out
 
-
 #The measure associated to each node is exactly its degree
 #Un esempio di questo è la degree-centrality quindi “quanti vicini” ha quel nodo , se ne ha tanti potrebbe essere un mio influencer.
 def degree(G):
