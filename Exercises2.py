@@ -60,18 +60,22 @@ def closeness(G):
     return cen
 
 # Computes edge and vertex betweenness of the graph in input
-def betweenness(G):
-    edge_btw={frozenset(e):0 for e in G.edges()}
-    node_btw={i:0 for i in G.nodes()}
+def betweenness_par(G,sample=None):
 
-    for s in G.nodes():
+    if sample is None:
+        sample=G.nodes()
+    subgraph=nx.subgraph(G,sample)
+    edge_btw={frozenset(e):0 for e in subgraph.edges()}
+    node_btw={i:0 for i in subgraph.nodes()}
+
+    for s in subgraph.nodes():
         # Compute the number of shortest paths from s to every other node
-        tree=[] #it lists the nodes in the order in which they are visited
-        spnum={i:0 for i in G.nodes()} #it saves the number of shortest paths from s to i
-        parents={i:[] for i in G.nodes()} #it saves the parents of i in each of the shortest paths from s to i
-        distance={i:-1 for i in G.nodes()} #the number of shortest paths starting from s that use the edge e
-        eflow={frozenset(e):0 for e in G.edges()} #the number of shortest paths starting from s that use the edge e
-        vflow={i:1 for i in G.nodes()} #the number of shortest paths starting from s that use the vertex i. It is initialized to 1 because the shortest path from s to i is assumed to uses that vertex once.
+        tree = []  # it lists the nodes in the order in which they are visited
+        spnum = {i: 0 for i in subgraph.nodes()}  # it saves the number of shortest paths from s to i
+        parents = {i: [] for i in subgraph.nodes()}  # it saves the parents of i in each of the shortest paths from s to i
+        distance = {i: -1 for i in subgraph.nodes()}  # the number of shortest paths starting from s that use the edge e
+        eflow = {frozenset(e): 0 for e in subgraph.edges()}  # the number of shortest paths starting from s that use the edge e
+        vflow = {i: 1 for i in subgraph.nodes()} #the number of shortest paths starting from s that use the vertex i. It is initialized to 1 because the shortest path from s to i is assumed to uses that vertex once.
 
         #BFS
         queue=[s]
@@ -80,7 +84,7 @@ def betweenness(G):
         while queue != []:
             c=queue.pop(0)
             tree.append(c)
-            for i in G[c]:
+            for i in subgraph[c]:
                 if distance[i] == -1: #if vertex i has not been visited
                     queue.append(i)
                     distance[i]=distance[c]+1
@@ -99,13 +103,28 @@ def betweenness(G):
                 node_btw[c]+=vflow[c] #betweenness of a vertex is the sum over all s of the number of shortest paths from s to other nodes using that vertex
 
     return edge_btw,node_btw
+def top_betweenness(G,k,j):
+    #PARALLELIZZAZIONE
+    pq=PriorityQueue()
+    with Parallel(n_jobs=j) as parallel:
+        #Run in parallel diameter function on each processor by passing to each processor only the subset of nodes on which it works
+        lista=parallel(delayed(betweenness_par)(G,X) for X in chunks(G.nodes(), math.ceil(len(G.nodes())/j)))
+        #Aggregates the results
+
+    for j in lista:
+        for i in j[1].keys():
+            pq.add(i,-j[1][i])#Fase di assemblaggio
+
+    out=[]
+    for i in range(k):
+        out.append(pq.pop())
+    return out
 
 #PARALLEL IMPLEMENTATION
 def chunks(data,size):
     idata=iter(data)
     for i in range(0, len(data), size):
         yield {k:data[k] for k in it.islice(idata, size)}
-
 def top_parallel(G,k,j):
     pq = PriorityQueue()
     with Parallel(n_jobs=j) as parallel:
@@ -120,7 +139,6 @@ def top_parallel(G,k,j):
     for i in range(k):
         out.append(pq.pop())
     return out
-
 def closeness_par(G,sample=None):
     cen=dict()
     if sample is None:
@@ -142,12 +160,9 @@ def closeness_par(G,sample=None):
                     dist[w] = dist[v]+1#contiene per ogni nodo la lunghezza del path minimo da esso alla radice
 
         cen[u]=sum(dist.values())
+    return cen
 
-
-#The measure associated to each node is its betweenness value
-def btw(G):
-    return betweenness(G)[1]
-#-------------------------------------------------PAGE RANKING OF UNDIRECTED GRAPHS
+#-------------------------------------------------PAGE RANKING NAIVEb
 def rank(graph,d=0.85,n_iterations=50):
 
     V = graph.number_of_nodes()  #is the number of nodes of the graph
@@ -169,7 +184,6 @@ def rank(graph,d=0.85,n_iterations=50):
             ranks[el] = ((1 - float(d)) * (1/float(V))) + d*rank_sum
 
     return ranks
-
 def top_rank(k,rank):
     pq = PriorityQueue()
     for u in rank.keys():
@@ -202,12 +216,6 @@ def rank_parallel(graph,sample=None,d=0.85,n_iterations=50):
             ranks[el] = ((1 - float(d)) * (1/float(V))) + d*rank_sum
 
     return ranks
-
-def chunks(data,size):
-    idata=iter(data)
-    for i in range(0, len(data), size):
-        yield {k:data[k] for k in it.islice(idata, size)}
-
 def parallel_rank(G,s,number_of_iteration,j):#j è il numero di jobs, s è il parametro della page-ranking, number_of_iteration è il numero di iterazioni del page-ranking
 
     total_rank=dict()
@@ -229,17 +237,16 @@ def hits(graph,k):
     for node in graph.nodes():
         auth[node] = 1
         hubs[node] = 1
-    for i in range(k):#We perform a sequence of k hub-authority updates
+    for i in range(k):  #We perform a sequence of k hub-authority updates
         for node in graph.nodes():
             auth[node] =sum(hubs[el] for el in graph[node])#First apply the Authority Update Rule to the current set of scores.
         for node in graph.nodes():
             hubs[node] =sum(auth[el] for el in graph[node])#Then apply the Hub Update Rule to the resulting set of scores.
 
-    auth_n,hubs_n=normalize(G,auth,hubs)
+    auth_n,hubs_n=normalize_naive(G,auth,hubs)
     return auth_n,hubs_n
 
-
-def normalize(G,auth,hubs):
+def normalize_naive(G,auth,hubs):
     auth_sum = sum(auth[node] for node in G.nodes())
     hub_sum = sum(hubs[node] for node in G.nodes())
 
@@ -247,7 +254,6 @@ def normalize(G,auth,hubs):
         auth[node] =auth[node]/auth_sum
         hubs[node] =hubs[node]/hub_sum
     return auth,hubs
-
 
 def top_hits(G,k,num_node):
     pq = PriorityQueue()
@@ -279,7 +285,6 @@ def parallel_hits(G,k,j):#j è il numero di jobs
             for el in i[1].keys():
                 hubs_total[el]=i[1][el]
     return auth_total,hubs_total
-
 def hits_sample(graph,sample,k):
     if sample is None:
         sample=graph
@@ -297,8 +302,6 @@ def hits_sample(graph,sample,k):
 
     auth_n,hubs_n=normalize(subgraph,sample,auth,hubs)
     return auth_n,hubs_n
-
-
 def normalize(G,sample,auth,hubs):
     auth_sum = sum(auth[node] for node in G.nodes())
     hub_sum = sum(hubs[node] for node in G.nodes())
@@ -307,9 +310,6 @@ def normalize(G,sample,auth,hubs):
         auth[node] =auth[node]/auth_sum
         hubs[node] =hubs[node]/hub_sum
     return auth,hubs
-
-
-
 def top_hits_parall(G,k,num_node,j):
     pq = PriorityQueue()
     pq2=PriorityQueue()
@@ -337,27 +337,37 @@ G.add_edge('4', '6')
 G.add_edge('4', '7')
 G.add_edge('5', '6')
 G.add_edge('6', '7')
-
-print("Centrality measures:")
-print("degree")
-print(top(G,degree,500))
-
-print("closeness")
-print(top_parallel(G,500,33))
-
-print("betweenness")
-print(top(G,btw,500))
-
-print("Page ranking Naive")
-rank=rank(G,0.85,50)
-print(top_rank(500,rank))
-print("\n Page ranking Parallelo")
-res=parallel_rank(G,0.85,50,10)#G,s,number_of_iteration,j
-print(top_rank(500,res))
 '''
-"""print("Hits Naive")
-a,h=top_f(G,30,500)
-print(a)"""
-print("Parallel Hits")
-a,h=top_hits_parall(G,30,500,20)
-print(a)
+inp=0
+while(inp!=int(8)):
+    print("Insert 1=degree 2=closeness 3=betweenness 4=PageRank 5=PageRank Ottimizzato 6=HITS 7=HITS Ottimizzato 8=exit:")
+    inp = int(input())
+    if inp == int(1):
+        print("Centrality measures:")
+        print("Degree")
+        print(top(G, degree, 500))
+    elif inp == int(2):
+        print("Centrality measures:")
+        print("Closeness")
+        print(top_parallel(G, 500, 40))
+    elif inp == int(3):
+        print("Centrality measures:")
+        print("Betweenness")
+        rest=top_betweenness(G, 500, 40)
+        print(rest)
+    elif inp == int(4):
+        print("Page ranking Naive")
+        rank = rank(G, 0.85, 50)
+        print(top_rank(500, rank))
+    elif inp == int(5):
+        print("Page ranking optimized")
+        res=parallel_rank(G, 0.85, 50, 40)
+        print(top_rank(500, res))
+    elif inp == int(6):
+        print("Hits Naive")
+        a, h = top_hits(G, 30, 500)
+        print(a)
+    elif inp == int(7):
+        print("Parallel Hits")
+        a, h = top_hits_parall(G, 30, 500, 20)
+        print(a)

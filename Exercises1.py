@@ -339,7 +339,6 @@ def bwt_cluster_parallel(G,j):
 
     graph=G.copy()
     done=False
-    old_list=list()
     while not done:
 
         edge=tuple(sorted(pq.pop()))
