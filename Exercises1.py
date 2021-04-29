@@ -108,7 +108,6 @@ def hierarchical(G,sample=None):
     return clusters
 # Function to parallel hierarchical
 def parallel_hier(G,j):#j è il numero di jobs
-
     c1_ov=frozenset()
     c2_ov=frozenset()
     c3_ov=frozenset()
@@ -413,61 +412,134 @@ def bwt_cluster_naive(G):
 
     return list_connected_comp
 
+def print_accuracy(i,cl_sperimentale):
+    cl_company,cl_government,cl_politician,cl_tvshow=load_real_clusters()
+    print("----Accuracy of real cluster on sperimental---\n")
+    print("Cluster"+str(i)+" company:",compute_cluster_accuracy(cl_company,cl_sperimentale))
+    print("Cluster"+str(i)+" government:",compute_cluster_accuracy(cl_government,cl_sperimentale))
+    print("Cluster"+str(i)+" politician:",compute_cluster_accuracy(cl_politician,cl_sperimentale))
+    print("Cluster"+str(i)+" tv show:",compute_cluster_accuracy(cl_tvshow,cl_sperimentale))
+def print_clusters(method,c1,c2,c3,c4):
+    print("Metodo "+method+" parallel\n")
+    print("Grandezza del cluster 1: "+str(len(c1))+"\n")
+    print("Grandezza del cluster 2: "+str(len(c2))+"\n")
+    print("Grandezza del cluster 3: "+str(len(c3))+"\n")
+    print("Grandezza del cluster 4: "+str(len(c4))+"\n")
+    print("cluster 1:"+str(c1)+"\n")
+    print("cluster 2:"+str(c2)+"\n")
+    print("cluster 3:"+str(c3)+"\n")
+    print("cluster 4:"+str(c4)+"\n")
+
 G=load_graph()
 
 inp=0
-while(inp!=int(5)):
-    print("Insert 1=parallel_hier 2=parallel_4means 3=parallel_spectral 4=Girvan Newman 5=exit:")
+
+while(inp!=int(8)):
+    print("Insert 0=hier_naive 1=parallel_hier 2=4-means_naive 3=parallel_4means 4=spectral_naive 5=parallel_spectral 6=Girvan Newman_naive 7=Girvan Newman 8=exit:")
     inp=int(input())
-    if(inp==1):
+    if(inp==0):
+        clusters=hierarchical(G,None)
+        count=1
+        c1=frozenset()
+        c2=frozenset()
+        c3=frozenset()
+        c4=frozenset()
+        for i in clusters:
+            if count == 1:
+                c1=i
+            elif count == 2:
+                c2=i
+            elif count == 3:
+                c3=i
+            elif count == 4:
+                c4=i
+            count+=1
+
+        print_clusters("Hierarchical Naive",c1,c2,c3,c4)
+        #Cluster 1
+        print_accuracy(1,c1)
+        #Cluster 2
+        print_accuracy(2,c2)
+        #Cluster 3
+        print_accuracy(3,c3)
+        #Cluster 4
+        print_accuracy(4,c4)
+    elif(inp==1):
         c1,c2,c3,c4=parallel_hier(G,40)
-        print("Metodo hierarchical parallel\n")
-        print("Grandezza del cluster 1: "+str(len(c1))+"\n")
-        print("Grandezza del cluster 2: "+str(len(c2))+"\n")
-        print("Grandezza del cluster 3: "+str(len(c3))+"\n")
-        print("Grandezza del cluster 4: "+str(len(c4))+"\n")
-        print("cluster 1:"+str(c1)+"\n")
-        print("cluster 2:"+str(c2)+"\n")
-        print("cluster 3:"+str(c3)+"\n")
-        print("cluster 4:"+str(c4)+"\n")
+        print_clusters("Hierarchical Parallel",c1,c2,c3,c4)
+        #Cluster 1
+        print_accuracy(1,c1)
+        #Cluster 2
+        print_accuracy(2,c2)
+        #Cluster 3
+        print_accuracy(3,c3)
+        #Cluster 4
+        print_accuracy(4,c4)
     elif(inp==2):
-        c1,c2,c3,c4=parallel_4means(G,40)
-        print("Metodo K-means\n")
-        print("Grandezza del cluster 1: "+str(len(c1))+"\n")
-        print("Grandezza del cluster 2: "+str(len(c2))+"\n")
-        print("Grandezza del cluster 3: "+str(len(c3))+"\n")
-        print("Grandezza del cluster 4: "+str(len(c4))+"\n")
-        print("cluster 1:"+str(c1))
-        print("cluster 2:"+str(c2))
-        print("cluster 3:"+str(c3))
-        print("cluster 4:"+str(c4))
+        c1,c2,c3,c4=four_means(G,None)
+        print_clusters("4-means naive",c1,c2,c3,c4)
+        #Cluster 1
+        print_accuracy(1,c1)
+        #Cluster 2
+        print_accuracy(2,c2)
+        #Cluster 3
+        print_accuracy(3,c3)
+        #Cluster 4
+        print_accuracy(4,c4)
     elif(inp==3):
-        c1,c2,c3,c4=parallel_spectral(G,40)
-        print("Metodo Spectral\n")
-        print("Grandezza del cluster 1: "+str(len(c1))+"\n")
-        print("Grandezza del cluster 2: "+str(len(c2))+"\n")
-        print("Grandezza del cluster 3: "+str(len(c3))+"\n")
-        print("Grandezza del cluster 4: "+str(len(c4))+"\n")
-        print("cluster 1:"+str(c1))
-        print("cluster 2:"+str(c2))
-        print("cluster 3:"+str(c3))
-        print("cluster 4:"+str(c4))
+        c1,c2,c3,c4=parallel_4means(G,40)
+        print_clusters("4-means parallelo",c1,c2,c3,c4)
+        #Cluster 1
+        print_accuracy(1,c1)
+        #Cluster 2
+        print_accuracy(2,c2)
+        #Cluster 3
+        print_accuracy(3,c3)
+        #Cluster 4
+        print_accuracy(4,c4)
     elif(inp==4):
-        list=bwt_cluster_parallel(G,50)
-        print(len(list))
-        print("Metodo Betweenness Parallel")
-        print("cluster 1:"+str(list[0]))
-        print("cluster 2:"+str(list[1]))
-        print("cluster 3:"+str(list[2]))
-        print("cluster 4:"+str(list[3]))
+        c1,c2,c3,c4=spectral(G,None)
+        print_clusters("Spectral Naive",c1,c2,c3,c4)
+        #Cluster 1
+        print_accuracy(1,c1)
+        #Cluster 2
+        print_accuracy(2,c2)
+        #Cluster 3
+        print_accuracy(3,c3)
+        #Cluster 4
+        print_accuracy(4,c4)
+    elif(inp==5):
+        c1,c2,c3,c4=parallel_spectral(G,40)
+        print_clusters("Spectral Parallel",c1,c2,c3,c4)
+        #Cluster 1
+        print_accuracy(1,c1)
+        #Cluster 2
+        print_accuracy(2,c2)
+        #Cluster 3
+        print_accuracy(3,c3)
+        #Cluster 4
+        print_accuracy(4,c4)
+    elif(inp==6):
+        list=bwt_cluster_naive(G)
+        print_clusters("Betweenness Naive",list[0],list[1],list[2],list[3])
+        #Cluster 1
+        print_accuracy(1,list[0])
+        #Cluster 2
+        print_accuracy(2,list[1])
+        #Cluster 3
+        print_accuracy(3,list[2])
+        #Cluster 4
+        print_accuracy(4,list[3])
+    elif(inp==7):
+        list=bwt_cluster_parallel(G,40)
+        print_clusters("Betweenness Parallel",list[0],list[1],list[2],list[3])
+        #Cluster 1
+        print_accuracy(1,list[0])
+        #Cluster 2
+        print_accuracy(2,list[1])
+        #Cluster 3
+        print_accuracy(3,list[2])
+        #Cluster 4
+        print_accuracy(4,list[3])
 
 
-'''company,government,politician,tvshow=load_real_clusters()
-p1=compute_cluster_accuracy(company,c1)
-p2=compute_cluster_accuracy(government,c1)
-p3=compute_cluster_accuracy(politician,c1)
-p4=compute_cluster_accuracy(tvshow,c1)
-print("Company:",p1,"\n")
-print("Government:",p2,"\n")
-print("Politician:",p3,"\n")
-print("Tv-Show:",p4,"\n")'''
