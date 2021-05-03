@@ -325,22 +325,18 @@ def top_hits_parall(G,k,num_node,j):
         out2.append(pq2.pop())
     return out,out2
 
+
+def compare_performance(out_naive,out):
+    count=0
+    for i in range(len(out_naive)):
+        if out_naive[i] == out[i]:
+            count+=1
+    return float((count/500)* 100)
+
 G=load_graph()
-'''
-G = nx.Graph()
-G.add_edge('1', '2')
-G.add_edge('1', '3')
-G.add_edge('2', '3')
-G.add_edge('2', '4')
-G.add_edge('4', '5')
-G.add_edge('4', '6')
-G.add_edge('4', '7')
-G.add_edge('5', '6')
-G.add_edge('6', '7')
-'''
 inp=0
-while(inp!=int(8)):
-    print("Insert 1=degree 2=closeness 3=betweenness 4=PageRank 5=PageRank Ottimizzato 6=HITS 7=HITS Ottimizzato 8=exit:")
+while(inp!=int(6)):
+    print("Insert 1=degree 2=closeness 3=Confronto betweenness 4=Confronto PageRank 5=Confronto HITS 6=exit:")
     inp = int(input())
     if inp == int(1):
         print("Centrality measures:")
@@ -352,22 +348,28 @@ while(inp!=int(8)):
         print(top_parallel(G, 500, 40))
     elif inp == int(3):
         print("Centrality measures:")
-        print("Betweenness")
-        rest=top_betweenness(G, 500, 40)
-        print(rest)
+        print("Betweenness: Esecuzione con 10 jobs:\n")
+        rest_10=top_betweenness(G, 500, 10)
+        print(rest_10)
+        print("Betweenness: Esecuzione con 40 jobs:\n")
+        rest_40=top_betweenness(G, 500, 40)
+        print(rest_40)
+        print(compare_performance(rest_10,rest_40))
     elif inp == int(4):
         print("Page ranking Naive")
         rank = rank(G, 0.85, 50)
-        print(top_rank(500, rank))
-    elif inp == int(5):
+        page_rank_naive=top_rank(500, rank)
+        print(page_rank_naive)
         print("Page ranking optimized")
         res=parallel_rank(G, 0.85, 50, 40)
-        print(top_rank(500, res))
-    elif inp == int(6):
+        page_rank_opt=top_rank(500, res)
+        print(page_rank_opt)
+        print(compare_performance(page_rank_naive,page_rank_opt))
+    elif inp == int(5):
         print("Hits Naive")
-        a, h = top_hits(G, 30, 500)
-        print(a)
-    elif inp == int(7):
+        a_hits_naive, h = top_hits(G, 30, 500)
+        print(a_hits_naive)
         print("Parallel Hits")
-        a, h = top_hits_parall(G, 30, 500, 20)
-        print(a)
+        a_hits_opt, h = top_hits_parall(G, 30, 500, 20)
+        print(a_hits_opt)
+        print(compare_performance(a_hits_naive,a_hits_opt))
