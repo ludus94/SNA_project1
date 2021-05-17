@@ -333,10 +333,22 @@ def compare_performance(out_naive,out):
             count+=1
     return float((count/500)* 100)
 
+def compare_perfomance_int(out_naive,out):
+    a=len(list(set(out_naive) & set(out)))
+    return float((a/500)*100)
+
+def intersection_tot(list_degree,list_closeness,rest_10,page_rank_naive,a_hits_naive):
+    a = list(set(list_degree) & set(list_closeness) & set(rest_10) &set(page_rank_naive) & set(a_hits_naive))
+    return a
+
+def intersection_bet_2_list(list1,list2):
+    b=list(set(list1) & set(list2))
+    return b
+
 G=load_graph()
 inp=0
-while(inp!=int(6)):
-    print("Insert 1=degree 2=closeness 3=Confronto betweenness 4=Confronto PageRank 5=Confronto HITS 6=exit:")
+while(inp!=int(7)):
+    print("Insert 1=degree 2=closeness 3=Confronto betweenness 4=Confronto PageRank 5=Confronto HITS 6=Confronto generale 7=exit:")
     inp = int(input())
     if inp == int(1):
         print("Centrality measures:")
@@ -370,6 +382,43 @@ while(inp!=int(6)):
         a_hits_naive, h = top_hits(G, 30, 500)
         print(a_hits_naive)
         print("Parallel Hits")
-        a_hits_opt, h = top_hits_parall(G, 30, 500, 20)
+        print("Insert number of jobs:")
+        jobs=int(input())
+        a_hits_opt, h = top_hits_parall(G, 20, 500, jobs)
         print(a_hits_opt)
-        print(compare_performance(a_hits_naive,a_hits_opt))
+        print("Positional performance:"+str(compare_performance(a_hits_naive,a_hits_opt)))
+        print("Intersect performance: "+str(compare_perfomance_int(a_hits_naive,a_hits_opt)))
+    elif inp == int(6):
+        print("Centrality measures:")
+        print("Degree\n")
+        list_degree=top(G, degree, 500)
+        print(list_degree)
+        print("Closeness\n")
+        list_closeness=top_parallel(G, 500, 40)
+        print(list_closeness)
+        print("Betweenness:\n")
+        rest_10 = top_betweenness(G, 500, 40)
+        print(rest_10)
+        #rest_10=[]
+        print("Page ranking\n")
+        rank = rank(G, 0.85, 50)
+        page_rank_naive = top_rank(500, rank)
+        print(page_rank_naive)
+        print("Hits\n")
+        a_hits_naive, h = top_hits(G, 30, 500)
+        print(a_hits_naive)
+        listing_tot=intersection_tot(list_degree,list_closeness,rest_10,page_rank_naive,a_hits_naive)
+        print("inteserzione totale:\n")
+        print(listing_tot)
+        print("Confronto Page Rank e Hits\n")
+        print(intersection_bet_2_list(page_rank_naive,a_hits_naive))
+        print("Confronto tra degree e closeness\n")
+        print(intersection_bet_2_list(list_degree,list_closeness))
+        print("Confronto tra degree e HITS\n")
+        print(intersection_bet_2_list(list_degree, a_hits_naive))
+        print("Confronto tra closeness e beetweness\n")
+        print(intersection_bet_2_list(list_closeness,rest_10))
+
+
+
+
